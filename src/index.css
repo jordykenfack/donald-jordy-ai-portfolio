@@ -1,0 +1,115 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#root {
+  background-color: #0c0c0c;
+}
+
+body {
+  font-family: 'Kanit', sans-serif;
+}
+
+.hero-heading {
+  background: linear-gradient(180deg, #646973 0%, #bbccd7 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Projects carousel — card sizing shared by track padding and cards so the
+   snap-centered card can sit exactly mid-viewport with neighbors peeking */
+.projects-track {
+  /* cards share one height; each card's width comes from its own media
+     aspect ratio, so images and videos always fit uncropped */
+  --card-h: min(48vw, 250px);
+  --card-gap: clamp(18px, 2vw, 28px);
+  gap: var(--card-gap);
+  /* generous centering room; snap always rests on a card, never in padding */
+  padding-inline: calc(50% - var(--card-h) * 0.7);
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+}
+
+@media (min-width: 640px) {
+  .projects-track {
+    --card-h: clamp(250px, 32vw, 380px);
+  }
+}
+
+@media (min-width: 1024px) {
+  .projects-track {
+    --card-h: clamp(280px, 24vw, 380px);
+  }
+}
+
+.projects-track::-webkit-scrollbar {
+  display: none;
+}
+
+/* applied for a single frame while the loop teleports the scroll position */
+.projects-teleporting * {
+  transition: none !important;
+}
+
+.projects-card {
+  height: var(--card-h);
+  width: auto;
+}
+
+/* Hero — MacBook showcase (frame asset is 1493x1053; screen opening measured
+   from its alpha channel) */
+.macbook-showcase {
+  position: relative;
+  width: min(100%, 900px);
+  aspect-ratio: 1493 / 1053;
+}
+
+/* extends ~0.3% past the measured opening (left 11.59% top 3.7% width 76.49%
+   height 68.38%) so its edges tuck under the opaque bezel — avoids background
+   peeking through the bezel's rounded inner corners */
+.macbook-screen {
+  position: absolute;
+  left: 11.3%;
+  top: 3.4%;
+  width: 77.05%;
+  height: 68.95%;
+  overflow: hidden;
+  /* small radius on purpose: the frame's opaque bezel masks the true rounded
+     corners, so a larger radius here would peel away from them */
+  border-radius: 5px;
+  background: #f4f3ef;
+  z-index: 1;
+}
+
+.macbook-frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* one-shot ring pulse on the comparison handle after the intro demo */
+.handle-pulse {
+  animation: handle-pulse 0.85s ease-out 1;
+}
+
+@keyframes handle-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.55);
+  }
+  100% {
+    box-shadow: 0 0 0 16px rgba(255, 255, 255, 0);
+  }
+}
