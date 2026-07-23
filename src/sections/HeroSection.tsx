@@ -39,9 +39,13 @@ export default function HeroSection() {
               <a
                 href="#"
                 aria-label="Donald Jordy — home"
-                className="text-lg font-medium tracking-tight text-[#111111] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#111111]"
+                className="rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#111111]"
               >
-                d.J
+                <img
+                  src="/donald.png"
+                  alt="Donald Jordy"
+                  className="h-9 w-9 rounded-full object-cover"
+                />
               </a>
               <PortfolioSwitcher />
             </div>
