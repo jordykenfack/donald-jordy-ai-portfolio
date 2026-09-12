@@ -3,33 +3,24 @@ import FadeIn from '../components/FadeIn';
 const SERVICES = [
   {
     number: '01',
-    name: 'Website Design',
+    name: 'Websites',
+    headline: 'Websites built around the action you want people to take.',
     description:
-      'Modern, conversion-focused websites designed end to end — structure, layout, typography, and copy that guide every visitor toward one clear action.',
+      'Landing pages, business websites, personal brands and custom digital experiences designed to communicate clearly, feel premium and guide visitors toward the right next step.',
   },
   {
     number: '02',
-    name: 'AI-Powered Development',
+    name: 'AI Automation',
+    headline: "Automate the work that shouldn't need you.",
     description:
-      'Sites built with AI-assisted workflows, so what normally takes an agency months goes live in weeks — without cutting corners on quality.',
+      'Lead workflows, follow-ups, CRM processes, onboarding, internal operations and AI-powered systems designed around the way your business actually works.',
   },
   {
     number: '03',
-    name: 'Business Automations',
+    name: 'Custom Digital Systems',
+    headline: 'When the solution needs more than a website.',
     description:
-      'Connected workflows that handle the busywork for you — lead capture, follow-up emails, bookings, and CRM updates that run on their own.',
-  },
-  {
-    number: '04',
-    name: 'Landing Pages',
-    description:
-      'Focused pages for launches, campaigns, and offers, built to turn clicks from ads and social into enquiries and sales.',
-  },
-  {
-    number: '05',
-    name: 'Ongoing Support',
-    description:
-      'Updates, fixes, and improvements after launch, so your site keeps pace with your business without you ever touching code.',
+      'Custom tools, integrations and digital systems that connect your website, data, workflows and AI into one useful experience.',
   },
 ];
 
@@ -44,7 +35,7 @@ export default function ServicesSection() {
           className="mb-16 text-center font-black uppercase leading-none tracking-tight text-[#0C0C0C] sm:mb-20 md:mb-28"
           style={{ fontSize: 'clamp(3rem, 12vw, 160px)' }}
         >
-          Services
+          What I Build
         </h2>
       </FadeIn>
 
@@ -52,7 +43,7 @@ export default function ServicesSection() {
         {SERVICES.map((service, i) => (
           <FadeIn key={service.number} delay={i * 0.1} y={30}>
             <div
-              className="flex items-start gap-6 py-8 sm:gap-10 sm:py-10 md:gap-14 md:py-12"
+              className="flex flex-col gap-6 py-10 sm:flex-row sm:items-start sm:gap-10 sm:py-12 md:gap-14 md:py-16"
               style={
                 i > 0
                   ? { borderTop: '1px solid rgba(12, 12, 12, 0.15)' }
@@ -61,20 +52,23 @@ export default function ServicesSection() {
             >
               <span
                 className="font-black leading-none text-[#0C0C0C]"
-                style={{ fontSize: 'clamp(3rem, 10vw, 140px)' }}
+                style={{ fontSize: 'clamp(2.5rem, 8vw, 110px)' }}
               >
                 {service.number}
               </span>
-              <div className="flex flex-col gap-3 pt-2 sm:gap-4">
-                <h3
-                  className="font-medium uppercase text-[#0C0C0C]"
-                  style={{ fontSize: 'clamp(1rem, 2.2vw, 2.1rem)' }}
-                >
+              <div className="flex flex-col gap-4 sm:pt-2">
+                <p className="text-xs font-medium uppercase tracking-[0.14em] text-[#0C0C0C]/45">
                   {service.name}
+                </p>
+                <h3
+                  className="max-w-[16ch] font-semibold leading-[1.15] text-[#0C0C0C]"
+                  style={{ fontSize: 'clamp(1.35rem, 3vw, 2.3rem)' }}
+                >
+                  {service.headline}
                 </h3>
                 <p
                   className="max-w-2xl font-light leading-relaxed text-[#0C0C0C] opacity-60"
-                  style={{ fontSize: 'clamp(0.85rem, 1.6vw, 1.25rem)' }}
+                  style={{ fontSize: 'clamp(0.9rem, 1.4vw, 1.15rem)' }}
                 >
                   {service.description}
                 </p>

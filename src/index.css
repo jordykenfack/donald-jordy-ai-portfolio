@@ -18,6 +18,11 @@ body {
   font-family: 'Kanit', sans-serif;
 }
 
+/* anchor nav (#work, #services, #contact) scrolls through Lenis (see
+   SmoothScroll.tsx) rather than CSS scroll-behavior, so the two don't fight
+   over easing. Lenis is skipped entirely under prefers-reduced-motion, which
+   leaves native (instant) anchor jumps as the fallback there. */
+
 .hero-heading {
   background: linear-gradient(180deg, #646973 0%, #bbccd7 100%);
   -webkit-background-clip: text;

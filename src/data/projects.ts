@@ -1,6 +1,8 @@
 export interface Project {
   id: string;
   title: string;
+  /** short category label shown above the title in the case-study card */
+  category: string;
   description: string;
   /** live site URL — omit when the project has no public deployment */
   url?: string;
@@ -18,10 +20,23 @@ export interface Project {
 // (1200x750 desktop captures of each site's hero section)
 export const PROJECTS: Project[] = [
   {
+    id: 'farel-site',
+    title: 'Farel Honvoh',
+    category: 'Personal Brand · AI',
+    description:
+      'Personal brand site for an agentic AI engineer, positioning services and client results with automated lead capture.',
+    url: 'https://farelhonvoh.com',
+    image: '/images/projects/farel-site-hero.webp',
+    aspect: 1280 / 720,
+    video: '/images/projects/farel-site-hero.mp4',
+    tags: ['Personal Brand', 'Portfolio', 'AI'],
+  },
+  {
     id: 'dymmdemaringuso',
     title: 'Do You Miss Me?',
+    category: 'Micro-site · Interaction',
     description:
-      'A playful micro-site with a cheeky twist — the "No" button darts away whenever you reach for it, while "Yes" swaps the animation and opens a direct WhatsApp chat.',
+      'A playful micro-site with a cheeky twist: the "No" button darts away whenever you reach for it, while "Yes" swaps the animation and opens a direct WhatsApp chat.',
     url: 'https://dymmdemaringuso.vercel.app',
     image: '/images/projects/dymmdemaringuso-hero.webp',
     aspect: 1200 / 750,
@@ -30,6 +45,7 @@ export const PROJECTS: Project[] = [
   {
     id: 'meei-conference',
     title: 'MEEI Investment Conference',
+    category: 'Corporate · Lead Generation',
     description:
       'Conference website for a China–Africa business summit, presenting speakers, agenda, and tickets to drive attendee registrations.',
     url: 'https://summit.meeihub.com',
@@ -40,6 +56,7 @@ export const PROJECTS: Project[] = [
   {
     id: 'rockman-logistics',
     title: 'Rockman Logistics',
+    category: 'Logistics · Corporate',
     description:
       'Marketing site for a Turkey–Ghana freight company, pairing clear service pages with instant quote estimates and live lead capture.',
     url: 'https://www.rockmanlogistics.com',
@@ -51,6 +68,7 @@ export const PROJECTS: Project[] = [
   {
     id: 'africa-tourism',
     title: 'Discover Benin',
+    category: 'Tourism · Web Design',
     description:
       'Tourism website introducing Turkish travellers to Benin, with curated journeys, itineraries, and practical trip-planning guidance.',
     image: '/images/projects/africa-tourism-hero.webp',
@@ -60,6 +78,7 @@ export const PROJECTS: Project[] = [
   {
     id: 'meeihub',
     title: 'MEEI Hub',
+    category: 'B2B · Corporate',
     description:
       'B2B trade hub connecting Turkish manufacturers with African markets across product categories, from construction materials to consumer goods.',
     url: 'https://www.meeihub.com.tr',
@@ -69,7 +88,8 @@ export const PROJECTS: Project[] = [
   },
   {
     id: 'meei-hub-draft',
-    title: 'MEEI Hub — New Concept',
+    title: 'MEEI Hub: New Concept',
+    category: 'B2B · UI/UX',
     description:
       'Redesign concept for the MEEI Hub trade platform, matching verified Turkish exporters with serious African buyers.',
     url: 'https://jordykenfack-meei-hub.vercel.app',
@@ -80,6 +100,7 @@ export const PROJECTS: Project[] = [
   {
     id: 'cozy',
     title: 'Cozy Journaling',
+    category: 'Landing Page · UI/UX',
     description:
       'A calm, animated landing page for a journaling habit, easing beginners into writing with gentle storytelling and guided prompts.',
     image: '/images/projects/cozy-hero.webp',
@@ -89,6 +110,7 @@ export const PROJECTS: Project[] = [
   {
     id: 'pulsar',
     title: 'Pulsar Records',
+    category: 'Landing Page · Web Design',
     description:
       'Concept site for an independent record label, translating an underground music identity into a bold digital presence.',
     image: '/images/projects/pulsar-hero.webp',
@@ -98,6 +120,7 @@ export const PROJECTS: Project[] = [
   {
     id: 'farel-masterclass',
     title: 'AI Masterclass',
+    category: 'Coaching · Conversion Design',
     description:
       'French-language webinar funnel for an AI automation masterclass, structured to move visitors from curiosity to registration.',
     image: '/images/projects/farel-masterclass-hero.webp',
@@ -107,22 +130,12 @@ export const PROJECTS: Project[] = [
   {
     id: 'b2b-event',
     title: 'Turkey–Africa Trade Event',
+    category: 'Landing Page · Lead Generation',
     description:
       'Event landing page presenting verified trade corridors between Turkey and Africa, built to convert visitors into qualified enquiries.',
     url: 'https://webinar-textile-suppliers.vercel.app',
     image: '/images/projects/b2b-event-hero.webp',
     aspect: 1200 / 852,
     tags: ['Landing Page', 'Lead Generation', 'Corporate'],
-  },
-  {
-    id: 'farel-site',
-    title: 'Farel Honvoh',
-    description:
-      'Personal brand site for an agentic AI engineer, positioning services and client results with automated lead capture.',
-    url: 'https://farelhonvoh.com',
-    image: '/images/projects/farel-site-hero.webp',
-    aspect: 1280 / 720,
-    video: '/images/projects/farel-site-hero.mp4',
-    tags: ['Personal Brand', 'Portfolio', 'AI'],
   },
 ];

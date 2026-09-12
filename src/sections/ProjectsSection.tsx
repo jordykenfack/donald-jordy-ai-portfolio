@@ -1,293 +1,207 @@
-import { useEffect, useRef, useState } from 'react';
-import { flushSync } from 'react-dom';
-import { motion } from 'framer-motion';
-import { ArrowLeft, ArrowRight, ArrowUpRight } from 'lucide-react';
+import { useEffect, useRef } from 'react';
+import { motion, useInView, useScroll, useTransform, type MotionValue } from 'framer-motion';
+import { ArrowUpRight } from 'lucide-react';
 import FadeIn from '../components/FadeIn';
+import { useIsDesktop, usePrefersReducedMotion } from '../hooks/useMediaQuery';
 import { PROJECTS, type Project } from '../data/projects';
 
-const arrowButtonClass =
-  'flex h-12 w-12 items-center justify-center rounded-full border-2 border-[#D7E2EA]/60 text-[#D7E2EA] transition-all duration-200 hover:border-[#D7E2EA] hover:bg-[#D7E2EA]/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D7E2EA]';
+// each card sticks slightly lower than the one before it, so earlier cards
+// peek out above the one currently covering them — a fanned stack rather
+// than a flat swap (adapted from Skiper16's `calc(-5vh + i*20+250px)` cascade,
+// top-anchored instead of center-anchored since our cards run taller than a
+// simple image card)
+const topOffsetFor = (index: number) => `calc(4vh + ${Math.min(index, 8) * 10}px)`;
 
-// seamless loop: a few clones on each side give the scroll room to continue,
-// then the settled position teleports back into the real list
-const CLONES = 3;
-const ITEMS = [...PROJECTS.slice(-CLONES), ...PROJECTS, ...PROJECTS.slice(0, CLONES)];
+// how far the oldest card is allowed to recede by the very end of the
+// sequence — subtle depth, not the dramatic 1 → 0.5 shrink of the Skiper16 demo
+const SCALE_FLOOR = 0.92;
+const OPACITY_FLOOR = 0.78;
 
-function ProjectCard({ project, active, index }: { project: Project; active: boolean; index: number }) {
+function ProjectMedia({ project, playWhenVisible }: { project: Project; playWhenVisible: boolean }) {
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  // preview videos play only on the active card (and never for reduced motion)
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
-    if (active && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      video.play().catch(() => {});
-    } else {
-      video.pause();
-    }
-  }, [active]);
+    if (playWhenVisible) video.play().catch(() => {});
+    else video.pause();
+  }, [playWhenVisible]);
 
   const mediaClass = 'absolute inset-0 h-full w-full select-none object-cover';
   const mediaPosition = { objectPosition: project.imagePosition ?? 'top center' };
 
-  // the screenshot stays clean — title, description, and tags live in the
-  // caption panel under the carousel instead of overlapping the site's text
-  const content = (
-    <>
-      {project.video ? (
-        <video
-          ref={videoRef}
-          src={project.video}
-          poster={project.image}
-          muted
-          loop
-          playsInline
-          preload="metadata"
-          aria-label={`Animated preview of the ${project.title} website`}
-          className={mediaClass}
-          style={mediaPosition}
-        />
-      ) : (
-        <img
-          src={project.image}
-          alt={`Hero section of the ${project.title} website`}
-          loading={index <= CLONES + 1 ? 'eager' : 'lazy'}
-          draggable={false}
-          className={mediaClass}
-          style={mediaPosition}
-        />
-      )}
-
-      {!project.url && (
-        <span className="absolute right-3 top-3 rounded-full bg-black/65 px-3 py-1.5 text-[10px] font-medium uppercase tracking-[0.12em] text-white/90">
-          Coming soon
-        </span>
-      )}
-    </>
-  );
-
-  // active card is never upscaled — upsampling was softening the screenshots
-  const cardClass = `relative block h-full w-full overflow-hidden bg-[#161616] transition-[transform,opacity] duration-500 ${
-    active ? 'scale-100 opacity-100' : 'scale-[0.96] opacity-70'
-  }`;
-  const radius = { borderRadius: 'clamp(24px, 3vw, 48px)' };
-
-  return project.url ? (
-    <a
-      href={project.url}
-      target="_blank"
-      rel="noopener noreferrer"
-      aria-label={`Open the ${project.title} website in a new tab`}
-      className={`${cardClass} ring-white/0 hover:ring-2 hover:ring-white/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#D7E2EA]`}
-      style={radius}
-    >
-      {content}
-    </a>
+  return project.video ? (
+    <video
+      ref={videoRef}
+      src={project.video}
+      poster={project.image}
+      muted
+      loop
+      playsInline
+      preload="metadata"
+      aria-label={`Animated preview of the ${project.title} website`}
+      className={mediaClass}
+      style={mediaPosition}
+    />
   ) : (
-    <div className={cardClass} style={radius}>
-      {content}
+    <img
+      src={project.image}
+      alt={`Hero section of the ${project.title} website`}
+      loading="lazy"
+      draggable={false}
+      className={mediaClass}
+      style={mediaPosition}
+    />
+  );
+}
+
+function ProjectCard({
+  project,
+  index,
+  total,
+  stackProgress,
+}: {
+  project: Project;
+  index: number;
+  total: number;
+  /** shared 0→1 scroll progress across the whole stack — every card reads
+      from the same value, Skiper16-style, so depth accumulates across the
+      sequence instead of resetting per card */
+  stackProgress: MotionValue<number>;
+}) {
+  const cardRef = useRef<HTMLDivElement>(null);
+  const isDesktop = useIsDesktop();
+  const reducedMotion = usePrefersReducedMotion();
+  const inView = useInView(cardRef, { amount: 0.5 });
+
+  // this card starts (very gradually) receding the moment its own slot in
+  // the sequence begins, and keeps receding through the rest of the scroll —
+  // cards further back end up more scaled/dimmed than ones that arrived recently
+  const rangeStart = index / total;
+  const stepsFromEnd = total - index - 1;
+  const targetScale = Math.max(SCALE_FLOOR, 1 - stepsFromEnd * 0.008);
+  const targetOpacity = Math.max(OPACITY_FLOOR, 1 - stepsFromEnd * 0.022);
+
+  const scaleMotion = useTransform(stackProgress, [rangeStart, 1], [1, targetScale]);
+  const opacityMotion = useTransform(stackProgress, [rangeStart, 1], [1, targetOpacity]);
+  // the sticky/overlap layout is itself a scroll-driven animation (cards
+  // covering one another), so reduced-motion drops it entirely in favor of
+  // a plain stacked list — same simplification mobile always uses
+  const stackEnabled = isDesktop && !reducedMotion;
+
+  return (
+    <div
+      ref={cardRef}
+      style={stackEnabled ? { top: topOffsetFor(index), zIndex: index + 1 } : undefined}
+      className={stackEnabled ? 'sticky flex justify-center pb-10' : 'pb-10'}
+    >
+      <motion.article
+        style={stackEnabled ? { scale: scaleMotion, opacity: opacityMotion } : undefined}
+        className="w-full origin-top overflow-hidden rounded-[28px] border border-white/5 bg-[#141414] shadow-2xl shadow-black/40 sm:rounded-[32px] md:rounded-[40px]"
+      >
+        {/* preview — the dominant element, full width, details live below it
+            as one unit so they always travel and scale together */}
+        <div className="relative aspect-[16/10] w-full sm:aspect-video">
+          <ProjectMedia project={project} playWhenVisible={inView && !reducedMotion} />
+          {project.url ? (
+            <a
+              href={project.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`Open the ${project.title} website in a new tab`}
+              className="absolute inset-0 transition-colors duration-200 hover:bg-white/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-[#D7E2EA]"
+            />
+          ) : (
+            <span className="absolute right-3 top-3 rounded-full bg-black/65 px-3 py-1.5 text-[10px] font-medium uppercase tracking-[0.12em] text-white/90">
+              Coming soon
+            </span>
+          )}
+        </div>
+
+        <div className="flex flex-col gap-4 p-6 sm:gap-5 sm:p-8 md:p-10">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-baseline sm:justify-between sm:gap-6">
+            <h3 className="text-2xl font-semibold text-[#F1EFEA] md:text-3xl">{project.title}</h3>
+            <p className="text-xs font-medium uppercase tracking-[0.14em] text-[#D7E2EA]/50">
+              {project.category}
+            </p>
+          </div>
+          <p className="max-w-[70ch] text-sm font-light leading-relaxed text-[#D7E2EA]/75 md:text-base">
+            {project.description}
+          </p>
+          <div className="flex flex-wrap items-center justify-between gap-4 pt-1">
+            <p className="text-xs font-medium uppercase tracking-[0.1em] text-[#D7E2EA]/40">
+              Built: {project.tags.join(' · ')}
+            </p>
+
+            {project.url ? (
+              <a
+                href={project.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                data-cta="project-view"
+                aria-label={`Open the ${project.title} website in a new tab`}
+                className="inline-flex w-fit items-center gap-1.5 rounded-full border-2 border-[#D7E2EA]/50 px-6 py-2.5 text-xs font-medium uppercase tracking-widest text-[#D7E2EA] transition-colors duration-200 hover:border-[#D7E2EA] hover:bg-[#D7E2EA]/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D7E2EA]"
+              >
+                View Project
+                <ArrowUpRight size={16} aria-hidden="true" />
+              </a>
+            ) : (
+              <span className="inline-flex w-fit items-center rounded-full border-2 border-[#D7E2EA]/20 px-6 py-2.5 text-xs font-medium uppercase tracking-widest text-[#D7E2EA]/45">
+                Coming soon
+              </span>
+            )}
+          </div>
+        </div>
+      </motion.article>
     </div>
   );
 }
 
 export default function ProjectsSection() {
-  const trackRef = useRef<HTMLDivElement>(null);
-  const [active, setActive] = useState(CLONES);
-  const activeProject =
-    PROJECTS[(((active - CLONES) % PROJECTS.length) + PROJECTS.length) % PROJECTS.length];
-
-  useEffect(() => {
-    const track = trackRef.current;
-    if (!track) return;
-
-    const nearestIndex = () => {
-      const mid = track.scrollLeft + track.clientWidth / 2;
-      let best = 0;
-      let bestDist = Infinity;
-      Array.from(track.children).forEach((child, i) => {
-        const el = child as HTMLElement;
-        const center = el.offsetLeft + el.offsetWidth / 2;
-        const dist = Math.abs(center - mid);
-        if (dist < bestDist) {
-          bestDist = dist;
-          best = i;
-        }
-      });
-      return best;
-    };
-
-    // start centered on the first real card (after the leading clones)
-    const first = track.children[CLONES] as HTMLElement;
-    track.scrollLeft = first.offsetLeft + first.offsetWidth / 2 - track.clientWidth / 2;
-    setActive(CLONES);
-
-    let raf = 0;
-    let settleTimer = 0;
-
-    // jump by exactly one full list width, committing the active-card state in
-    // the same task so the scroll jump and restyle paint together (content on
-    // both sides of the jump is identical, so the swap is invisible)
-    const shift = (dir: 1 | -1) => {
-      const children = track.children;
-      // cards have differing widths, so measure one full real-list width
-      // directly: the distance between a card and its clone twin
-      const listWidth =
-        (children[CLONES + PROJECTS.length] as HTMLElement).offsetLeft -
-        (children[CLONES] as HTMLElement).offsetLeft;
-      // suppress card transitions for this frame — the target card must paint
-      // already in its final state or the swap shows as a 500ms pulse
-      track.classList.add('projects-teleporting');
-      track.scrollLeft += dir * listWidth;
-      flushSync(() => setActive(nearestIndex()));
-      void track.offsetWidth;
-      requestAnimationFrame(() => track.classList.remove('projects-teleporting'));
-    };
-
-    // once scrolling rests inside a clone zone, recentre into the real list
-    const settle = () => {
-      const g = nearestIndex();
-      if (g < CLONES) shift(1);
-      else if (g >= CLONES + PROJECTS.length) shift(-1);
-    };
-
-    const onScroll = () => {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => {
-        const g = nearestIndex();
-        // hard-edge guard: teleport immediately at the outermost clones so
-        // momentum never rubber-bands against the physical end of the track
-        if (g === 0 || g === ITEMS.length - 1) shift(g === 0 ? 1 : -1);
-        else setActive(g);
-      });
-      window.clearTimeout(settleTimer);
-      settleTimer = window.setTimeout(settle, 140);
-    };
-
-    track.addEventListener('scroll', onScroll, { passive: true });
-    return () => {
-      track.removeEventListener('scroll', onScroll);
-      cancelAnimationFrame(raf);
-      window.clearTimeout(settleTimer);
-    };
-  }, []);
-
-  const goTo = (index: number) => {
-    const track = trackRef.current;
-    const card = track?.children[Math.max(0, index)] as HTMLElement | undefined;
-    if (!track || !card) return;
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    track.scrollTo({
-      left: card.offsetLeft + card.offsetWidth / 2 - track.clientWidth / 2,
-      behavior: reduced ? 'auto' : 'smooth',
-    });
-  };
+  const stackRef = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({ target: stackRef, offset: ['start start', 'end end'] });
 
   return (
-    <section
-      id="projects"
-      className="relative z-10 -mt-10 overflow-hidden rounded-t-[40px] bg-[#0C0C0C] pb-24 pt-20 sm:-mt-12 sm:rounded-t-[50px] sm:pt-24 md:-mt-14 md:rounded-t-[60px] md:pt-32"
-    >
-      <div className="relative px-5 sm:px-8 md:px-10">
-        <FadeIn delay={0} y={40}>
+    <section id="work" className="relative bg-[#0C0C0C] px-5 pb-24 pt-20 sm:px-8 sm:pt-24 md:px-10 md:pt-32">
+      <div className="relative mb-16 sm:mb-20 md:mb-24">
+        <FadeIn delay={0} y={20}>
+          <p className="text-center text-xs font-medium uppercase tracking-[0.16em] text-[#D7E2EA]/60">
+            Selected Work
+          </p>
+        </FadeIn>
+        <FadeIn delay={0.08} y={40}>
           <h2
-            className="hero-heading text-center font-black uppercase leading-none tracking-tight"
-            style={{ fontSize: 'clamp(3rem, 12vw, 160px)' }}
+            className="hero-heading mt-4 text-center font-black uppercase leading-none tracking-tight"
+            style={{ fontSize: 'clamp(2.75rem, 10vw, 130px)' }}
           >
-            Projects
+            Built for real ideas.
           </h2>
         </FadeIn>
-        <FadeIn delay={0.15} y={24}>
+        <FadeIn delay={0.18} y={24}>
           <p className="mx-auto mt-6 max-w-[46ch] text-center text-sm font-light leading-relaxed text-[#D7E2EA]/80 sm:text-base">
-            A selection of websites designed to turn ideas into clear, engaging digital
-            experiences.
+            A selection of websites and digital experiences built for clients, brands and
+            ambitious personal projects.
           </p>
         </FadeIn>
-
-        {/* desktop arrows near the outer edges, reference-style; the carousel
-            loops, so neither arrow ever disables */}
-        <div className="mt-8 flex justify-center gap-4 md:absolute md:inset-x-10 md:top-1/2 md:mt-0 md:justify-between">
-          <button
-            type="button"
-            aria-label="View previous project"
-            onClick={() => goTo(active - 1)}
-            className={arrowButtonClass}
-          >
-            <ArrowLeft size={22} aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            aria-label="View next project"
-            onClick={() => goTo(active + 1)}
-            className={arrowButtonClass}
-          >
-            <ArrowRight size={22} aria-hidden="true" />
-          </button>
-        </div>
       </div>
 
-      {/* one entrance animation for the whole row — per-card animations would
-          re-trigger visibly when the loop teleports the scroll position */}
-      <FadeIn delay={0.2} y={30} className="mt-10 sm:mt-14 md:mt-16">
-        <div ref={trackRef} className="projects-track flex snap-x snap-mandatory overflow-x-auto">
-          {ITEMS.map((project, i) => {
-            const isClone = i < CLONES || i >= CLONES + PROJECTS.length;
-            return (
-              <article
-                // duplicates only exist to make the loop seamless — hide from AT
-                key={isClone ? `clone-${i}` : project.id}
-                aria-hidden={isClone || undefined}
-                className="projects-card shrink-0 snap-center"
-                style={{ aspectRatio: String(project.aspect) }}
-              >
-                <ProjectCard project={project} active={i === active} index={i} />
-              </article>
-            );
-          })}
-        </div>
+      <div ref={stackRef} className="mx-auto max-w-4xl">
+        {PROJECTS.map((project, i) => (
+          <ProjectCard
+            key={project.id}
+            project={project}
+            index={i}
+            total={PROJECTS.length}
+            stackProgress={scrollYProgress}
+          />
+        ))}
+      </div>
+
+      <FadeIn delay={0} y={20} className="mt-8 sm:mt-10">
+        <p className="mx-auto max-w-[36ch] text-center text-sm font-light leading-relaxed text-[#D7E2EA]/60 sm:text-base">
+          You've seen the work. Now, let's talk about yours.
+        </p>
       </FadeIn>
-
-      {/* caption for the active project — kept off the screenshots entirely */}
-      <div className="mx-auto mt-8 flex min-h-[210px] w-full max-w-xl flex-col px-6 text-center sm:mt-10 sm:min-h-[190px]">
-        <motion.div
-          key={activeProject.id}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, ease: 'easeOut' }}
-          className="flex flex-col items-center"
-        >
-          <h3 className="text-xl font-semibold text-[#D7E2EA] md:text-2xl">
-            {activeProject.title}
-          </h3>
-          <p className="mt-2 text-sm font-light leading-relaxed text-[#D7E2EA]/70 md:text-base">
-            {activeProject.description}
-          </p>
-          <div className="mt-4 flex flex-wrap justify-center gap-2">
-            {activeProject.tags.map((tag) => (
-              <span
-                key={tag}
-                className="rounded-full bg-[#D7E2EA]/10 px-3 py-1.5 text-xs font-medium text-[#D7E2EA]/90"
-              >
-                {tag}
-              </span>
-            ))}
-          </div>
-          {activeProject.url ? (
-            <a
-              href={activeProject.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-5 inline-flex items-center gap-1.5 rounded-full border-2 border-[#D7E2EA]/60 px-6 py-2.5 text-xs font-medium uppercase tracking-widest text-[#D7E2EA] transition-colors duration-200 hover:border-[#D7E2EA] hover:bg-[#D7E2EA]/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D7E2EA]"
-            >
-              Visit live site
-              <ArrowUpRight size={16} aria-hidden="true" />
-            </a>
-          ) : (
-            <span className="mt-5 inline-flex items-center rounded-full border-2 border-[#D7E2EA]/25 px-6 py-2.5 text-xs font-medium uppercase tracking-widest text-[#D7E2EA]/50">
-              Coming soon
-            </span>
-          )}
-        </motion.div>
-      </div>
     </section>
   );
 }
